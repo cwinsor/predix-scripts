@@ -19,22 +19,22 @@ WINDDATA_SERVICE_APP_NAME="$INSTANCE_PREPENDER-winddata-service"
 ############### UAA Configurations ###############
 
 # The username of the new user to authenticate with the application
-UAA_USER_NAME="app_user_1"
+UAA_USER_NAME="Au1"
 
 # The email address of username above
 UAA_USER_EMAIL="app_user_1@ge.com"
 
 # The password of the user above
-UAA_USER_PASSWORD="app_user_1"
+UAA_USER_PASSWORD="au1"
 
 # The secret of the Admin client ID (Administrator Credentails)
-UAA_ADMIN_SECRET="secret"
+UAA_ADMIN_SECRET="aa1"
 
 # The generic client ID that will be created with necessary UAA scope/autherities
-UAA_CLIENTID_GENERIC="app_client_id"
+UAA_CLIENTID_GENERIC="Ac1"
 
 # The generic client ID password
-UAA_CLIENTID_GENERIC_SECRET="secret"
+UAA_CLIENTID_GENERIC_SECRET="ac1"
 
 ############# Predix Asset Configurations #############
 
