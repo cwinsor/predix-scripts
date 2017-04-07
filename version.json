@@ -7,7 +7,7 @@
     "winddata-timeseries-service": "https://github.com/PredixDev/winddata-timeseries-service.git#2.0.11",
     "predix-nodejs-starter": "https://github.com/PredixDev/predix-nodejs-starter.git#1.0.10",
     "Predix-HelloWorld-WebApp": "https://github.com/PredixDev/Predix-HelloWorld-WebApp.git#1.0.2",
-    "predix-machine-templates": "https://github.com/PredixDev/predix-machine-templates.git#master"
+    "predix-machine-templates": "https://github.com/PredixDev/predix-machine-templates.git#1.1.9"
   },
   "author": "rishabhtulsian,swapnavad,susheelchoudhari"
 }
