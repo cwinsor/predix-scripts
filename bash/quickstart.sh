@@ -59,7 +59,7 @@ cf config --locale en-US
 
 source "$quickstartRootDir/readargs.sh"
 
-if [[ "$RUN_PRINT_VCAPS" == "0" ]]; then
+#if [[ "$RUN_PRINT_VCAPS" == "0" ]]; then
   echo "INSTANCE_PREPENDER            : $INSTANCE_PREPENDER"
   echo "USE_TRAINING_UAA              : $USE_TRAINING_UAA"
   echo "CUSTOM_UAA_INSTANCE           : $CUSTOM_UAA_INSTANCE"
@@ -78,7 +78,7 @@ if [[ "$RUN_PRINT_VCAPS" == "0" ]]; then
   echo "MAVEN_SETTNGS_FILE            : $MAVEN_SETTNGS_FILE"
   echo "USE_WINDDATA_SERVICE          : $USE_WINDDATA_SERVICE"
   echo "VERIFY_MVN                    : $VERIFY_MVN"
-fi
+#fi
 
 
 if [[ $RUN_CREATE_MACHINE_CONTAINER == 1 || $USE_WINDDATA_SERVICE == 1 || $VERIFY_MVN == 1 ]]; then
