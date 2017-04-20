@@ -5,7 +5,7 @@
   "dependencies": {
     "local-setup": "https://github.com/PredixDev/local-setup.git#1.0.10",
     "winddata-timeseries-service": "https://github.com/cwinsor/winddata-timeseries-service.git#demo",
-    "predix-nodejs-starter": "https://github.com/PredixDev/predix-nodejs-starter.git#1.0.10",
+    "predix-nodejs-starter": "https://github.com/cwinsor/predix-nodejs-starter.git#demo",
     "Predix-HelloWorld-WebApp": "https://github.com/PredixDev/Predix-HelloWorld-WebApp.git#1.0.2",
     "predix-machine-templates": "https://github.com/PredixDev/predix-machine-templates.git#1.1.9"
   },
