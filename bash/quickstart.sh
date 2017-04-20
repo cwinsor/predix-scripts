@@ -111,6 +111,8 @@ if [[ $RUN_DEPLOY_FRONTEND -eq 1 ]]; then
   if [ $RUN_DELETE_SERVICES -eq 1 ] && [ $RUN_CREATE_SERVICES -eq 0]; then
     "$quickstartRootDir/scripts/predix_services_setup.sh" "$TEMP_APP"
   fi
+  exit 2
+#zona
   "$quickstartRootDir/scripts/build-basic-app.sh" "$TEMP_APP"
 fi
 #Create machine container
