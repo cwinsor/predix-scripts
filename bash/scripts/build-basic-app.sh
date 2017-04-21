@@ -162,7 +162,7 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
     sed -i -e 's/uaa_service_label : predix-uaa/uaa_service_label : predix-uaa-training/' manifest.yml
   fi
 
-  if [[ $USE_MVN_PACKAGE -eq 1]]; then
+  if [[ $USE_MVN_PACKAGE -eq 1 ]]; then
     __append_new_head_log "Compiling the application from source $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
     mvn package
   else
