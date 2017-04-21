@@ -25,6 +25,7 @@ USE_TRAINING_UAA=0
 CUSTOM_UAA_INSTANCE=""
 RUN_DELETE_SERVICES=0
 RUN_CREATE_SERVICES=0
+RUN_MVN_PACKAGE=0
 RUN_MACHINE_CONFIG=0
 RUN_COMPILE_REPO=0
 RUN_MACHINE_TRANSFER=0
@@ -78,6 +79,9 @@ while :; do
           ;;
         -cs|--create-services)
           RUN_CREATE_SERVICES=1
+          ;;
+         -mp|--mvn-package)
+          RUN_MVN_PACKAGE=1
           ;;
         -mc|--machine-config)
           RUN_MACHINE_CONFIG=1
@@ -235,6 +239,7 @@ export CUSTOM_UAA_INSTANCE
 export USE_TRAINING_UAA
 export RUN_DELETE_SERVICES
 export RUN_CREATE_SERVICES
+export RUN_MVN_PACKAGE
 export RUN_MACHINE_CONFIG
 export RUN_CREATE_MACHINE_CONTAINER
 export RUN_COMPILE_REPO
@@ -256,6 +261,7 @@ if [[ -z "$PRINTED_VARIABLES" && "$RUN_PRINT_VCAPS" == "0" ]]; then
   __append_new_line_log "CUSTOM_UAA_INSTANCE" "$quickstartLogDir"
   __append_new_line_log "RUN_DELETE_SERVICES" "$quickstartLogDir"
   __append_new_line_log "RUN_CREATE_SERVICES" "$quickstartLogDir"
+  __append_new_line_log "RUN_MVN_PACKAGE" "$quickstartLogDir"
   __append_new_line_log "RUN_MACHINE_CONFIG" "$quickstartLogDir"
   __append_new_line_log "RUN_CREATE_MACHINE_CONTAINER" "$quickstartLogDir"
   __append_new_line_log "RUN_EDGE_MANAGER_SETUP" "$quickstartLogDir"

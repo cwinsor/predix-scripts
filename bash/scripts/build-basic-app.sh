@@ -161,12 +161,15 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   if [[ $USE_TRAINING_UAA -eq 1 ]]; then
     sed -i -e 's/uaa_service_label : predix-uaa/uaa_service_label : predix-uaa-training/' manifest.yml
   fi
-  __append_new_head_log "Retrieving the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
 
-  __append_new_head_log "zona MAVEN_SETTINGS FILE: $MAVEN_SETTNGS_FILE" "-" "$buildBasicAppLogDir"
+  if [[ $USE_MVN_PACKAGE -eq 1]]; then
+    __append_new_head_log "Compiling the application from source $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
+    mvn package
+  else
+    __append_new_head_log "Retrieving the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
+    mvn clean dependency:copy -s $MAVEN_SETTNGS_FILE
+  if
 
-  mvn clean dependency:copy -s $MAVEN_SETTNGS_FILE
- #zona mvn package
   __append_new_head_log "Deploying the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
   if cf push; then
     __append_new_line_log "Successfully deployed!" "$buildBasicAppLogDir"
@@ -181,10 +184,6 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   WINDDATA_SERVICE_URL=$(cf app $WINDDATA_SERVICE_APP_NAME | grep urls | awk -F" " '{print $2}')
   cd ..
 fi
-
-__append_new_line_log "zona - exiting now!\n"  "$buildBasicAppLogDir"
-exit 2
-#zona
 
 
 # Checkout the nodejs-starter
