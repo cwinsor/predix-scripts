@@ -130,6 +130,10 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
     __error_exit "There was an error cloning the repo \"$GIT_WINDDATA_SERVICE_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
   fi
 
+__append_new_line_log "zona - exiting now!\n"
+exit 2
+#zona
+
   #Checkout the tag if provided by user
   #__checkoutTags "$GIT_WINDDATA_SERVICE_FILENAME"
 
