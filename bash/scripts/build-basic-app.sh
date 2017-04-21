@@ -168,7 +168,7 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   else
     __append_new_head_log "Retrieving the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
     mvn clean dependency:copy -s $MAVEN_SETTNGS_FILE
-  if
+  fi
 
   __append_new_head_log "Deploying the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
   if cf push; then
