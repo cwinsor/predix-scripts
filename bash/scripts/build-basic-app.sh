@@ -162,6 +162,9 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
     sed -i -e 's/uaa_service_label : predix-uaa/uaa_service_label : predix-uaa-training/' manifest.yml
   fi
   __append_new_head_log "Retrieving the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
+
+  __append_new_head_log "zona MAVEN_SETTINGS FILE: $MAVEN_SETTNGS_FILE" "-" "$buildBasicAppLogDir"
+
   mvn clean dependency:copy -s $MAVEN_SETTNGS_FILE
   __append_new_head_log "Deploying the application $WINDDATA_SERVICE_APP_NAME" "-" "$buildBasicAppLogDir"
   if cf push; then
