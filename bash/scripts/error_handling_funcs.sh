@@ -116,7 +116,7 @@ function __print_out_usage
   echo "[-ds|--delete-services]               => Delete the service instances previously created"
   echo "[-cs|--create-services]               => Create the service instances"
   echo "[-mp|--mvn-package]                   => Run mvn package to generate .jar instead of pulling from repo"
-  echo "[-nmp]--no-git-clone]                 => do not git-clone the repositories (preserves changes)"
+  echo "[-ngc]--no-git-clone]                 => do not git clone sub-repositories"
   echo "[-mc|--machine-config]                => Configure machine container with valid endpoints to UAA and Time Series"
   echo "[-cc|--clean-compile]                 => Force clean and compile the Device specific repo"
   echo "[-mt|--machine-transfer]              => Transfer the configured Machine container to desired device"
