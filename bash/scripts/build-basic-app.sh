@@ -199,20 +199,19 @@ if [ -d "$GIT_FRONT_END_FILENAME" ]; then
     else
       __error_exit "There was an error deleting the directory: \"$GIT_FRONT_END_FILENAME\"" "$buildBasicAppLogDir"
     fi
-  fi
   
-  getRepoURL "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_URL
-  getRepoVersion "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_VERSION
-  if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
-    GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
-  fi
-
-  if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
-    cd "$GIT_FRONT_END_FILENAME"
-    __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
-  else
-    __error_exit "There was an error cloning the repo \"$GIT_FRONT_END_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
-  fi
+    getRepoURL "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_URL
+    getRepoVersion "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_VERSION
+    if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
+      GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
+    fi
+  
+    if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
+      cd "$GIT_FRONT_END_FILENAME"
+      __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
+    else
+      __error_exit "There was an error cloning the repo \"$GIT_FRONT_END_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+    fi
   else
     __append_new_line_log "Preserving existing directory \"$GIT_FRONT_END_FILENAME\"..." "$buildBasicAppLogDir"
   fi
