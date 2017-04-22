@@ -123,7 +123,7 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
     GIT_PREDIX_WINDDATA_SERVICE_VERSION="$BRANCH"
   fi
 
-  if [[ $DO_GIT_CLONE ]]; then
+  if [[ $DO_GIT_CLONE -eq 1 ]]; then
     if git clone -b "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" "$GIT_PREDIX_WINDDATA_SERVICE_URL" "$GIT_WINDDATA_SERVICE_FILENAME"; then
       cd "$GIT_WINDDATA_SERVICE_FILENAME"
       __append_new_line_log "Successfully cloned \"$GIT_WINDDATA_SERVICE_FILENAME\" and checkout the branch \"$GIT_PREDIX_WINDDATA_SERVICE_VERSION\"" "$buildBasicAppLogDir"
@@ -205,7 +205,7 @@ if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
   GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
 fi
 
-if [[ $DO_GIT_CLONE ]]; then
+if [[ $DO_GIT_CLONE -eq 1 ]]; then
   if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
     cd "$GIT_FRONT_END_FILENAME"
     __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
