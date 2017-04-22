@@ -26,6 +26,7 @@ CUSTOM_UAA_INSTANCE=""
 RUN_DELETE_SERVICES=0
 RUN_CREATE_SERVICES=0
 RUN_MVN_PACKAGE=0
+NO_GIT_CLONE=0
 RUN_MACHINE_CONFIG=0
 RUN_COMPILE_REPO=0
 RUN_MACHINE_TRANSFER=0
@@ -82,6 +83,9 @@ while :; do
           ;;
          -mp|--mvn-package)
           RUN_MVN_PACKAGE=1
+          ;;
+         -ngc|--no-git-clone)
+          NO_GIT_CLONE=1
           ;;
         -mc|--machine-config)
           RUN_MACHINE_CONFIG=1
@@ -240,6 +244,7 @@ export USE_TRAINING_UAA
 export RUN_DELETE_SERVICES
 export RUN_CREATE_SERVICES
 export RUN_MVN_PACKAGE
+export NO_GIT_CLONE
 export RUN_MACHINE_CONFIG
 export RUN_CREATE_MACHINE_CONTAINER
 export RUN_COMPILE_REPO
@@ -262,6 +267,7 @@ if [[ -z "$PRINTED_VARIABLES" && "$RUN_PRINT_VCAPS" == "0" ]]; then
   __append_new_line_log "RUN_DELETE_SERVICES" "$quickstartLogDir"
   __append_new_line_log "RUN_CREATE_SERVICES" "$quickstartLogDir"
   __append_new_line_log "RUN_MVN_PACKAGE" "$quickstartLogDir"
+  __append_new_line_log "NO_GIT_CLONE" "$quickstartLogDir"
   __append_new_line_log "RUN_MACHINE_CONFIG" "$quickstartLogDir"
   __append_new_line_log "RUN_CREATE_MACHINE_CONTAINER" "$quickstartLogDir"
   __append_new_line_log "RUN_EDGE_MANAGER_SETUP" "$quickstartLogDir"

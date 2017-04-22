@@ -123,11 +123,13 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
     GIT_PREDIX_WINDDATA_SERVICE_VERSION="$BRANCH"
   fi
 
-  if git clone -b "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" "$GIT_PREDIX_WINDDATA_SERVICE_URL" "$GIT_WINDDATA_SERVICE_FILENAME"; then
-    cd "$GIT_WINDDATA_SERVICE_FILENAME"
-    __append_new_line_log "Successfully cloned \"$GIT_WINDDATA_SERVICE_FILENAME\" and checkout the branch \"$GIT_PREDIX_WINDDATA_SERVICE_VERSION\"" "$buildBasicAppLogDir"
-  else
-    __error_exit "There was an error cloning the repo \"$GIT_WINDDATA_SERVICE_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+  if [[ $NO_GIT_CLONE -eq 0 ]]; then
+    if git clone -b "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" "$GIT_PREDIX_WINDDATA_SERVICE_URL" "$GIT_WINDDATA_SERVICE_FILENAME"; then
+      cd "$GIT_WINDDATA_SERVICE_FILENAME"
+      __append_new_line_log "Successfully cloned \"$GIT_WINDDATA_SERVICE_FILENAME\" and checkout the branch \"$GIT_PREDIX_WINDDATA_SERVICE_VERSION\"" "$buildBasicAppLogDir"
+    else
+      __error_exit "There was an error cloning the repo \"$GIT_WINDDATA_SERVICE_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+    fi
   fi
 
   #Checkout the tag if provided by user
@@ -202,12 +204,16 @@ getRepoVersion "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_VERSION
 if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
   GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
 fi
-if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
-  cd "$GIT_FRONT_END_FILENAME"
-  __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
-else
-  __error_exit "There was an error cloning the repo \"$GIT_FRONT_END_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+
+if [[ $NO_GIT_CLONE -eq 0 ]]; then
+  if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
+    cd "$GIT_FRONT_END_FILENAME"
+    __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
+  else
+    __error_exit "There was an error cloning the repo \"$GIT_FRONT_END_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+  fi
 fi
+
 #Checkout the tag if provided by user
 #__checkoutTags "$GIT_FRONT_END_FILENAME"
 
