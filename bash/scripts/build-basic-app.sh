@@ -133,7 +133,6 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   else
     __append_new_line_log "Preserving existing directory \"$GIT_WINDDATA_SERVICE_FILENAME\"..." "$buildBasicAppLogDir"
   fi
-fi
 
   #Checkout the tag if provided by user
   #__checkoutTags "$GIT_WINDDATA_SERVICE_FILENAME"
