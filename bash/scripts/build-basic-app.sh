@@ -107,30 +107,33 @@ MYGENERICS_SECRET=$(echo -ne $UAA_CLIENTID_GENERIC:$UAA_CLIENTID_GENERIC_SECRET 
 
 cd "$buildBasicAppRootDir/.."
 if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
-  # Checkout the winddata-timeseries-service
-  if [ -d "$GIT_WINDDATA_SERVICE_FILENAME" ]
-  then
-    __append_new_line_log "Deleting existing directory \"$GIT_WINDDATA_SERVICE_FILENAME\"..." "$buildBasicAppLogDir"
-    if rm -rf "$GIT_WINDDATA_SERVICE_FILENAME"; then
-      __append_new_line_log "Successfully deleted!" "$buildBasicAppLogDir"
-    else
-      __error_exit "There was an error deleting the directory: \"$GIT_WINDDATA_SERVICE_FILENAME\"" "$buildBasicAppLogDir"
-    fi
-  fi
-  getRepoURL "winddata-timeseries-service" GIT_PREDIX_WINDDATA_SERVICE_URL
-  getRepoVersion "winddata-timeseries-service" GIT_PREDIX_WINDDATA_SERVICE_VERSION
-  if [ ! -n "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" ]; then
-    GIT_PREDIX_WINDDATA_SERVICE_VERSION="$BRANCH"
-  fi
-
   if [[ $DO_GIT_CLONE -eq 1 ]]; then
+    # Checkout the winddata-timeseries-service
+    if [ -d "$GIT_WINDDATA_SERVICE_FILENAME" ]
+    then
+      __append_new_line_log "Deleting existing directory \"$GIT_WINDDATA_SERVICE_FILENAME\"..." "$buildBasicAppLogDir"
+      if rm -rf "$GIT_WINDDATA_SERVICE_FILENAME"; then
+        __append_new_line_log "Successfully deleted!" "$buildBasicAppLogDir"
+      else
+        __error_exit "There was an error deleting the directory: \"$GIT_WINDDATA_SERVICE_FILENAME\"" "$buildBasicAppLogDir"
+      fi
+    fi
+    getRepoURL "winddata-timeseries-service" GIT_PREDIX_WINDDATA_SERVICE_URL
+    getRepoVersion "winddata-timeseries-service" GIT_PREDIX_WINDDATA_SERVICE_VERSION
+    if [ ! -n "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" ]; then
+      GIT_PREDIX_WINDDATA_SERVICE_VERSION="$BRANCH"
+    fi
+
     if git clone -b "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" "$GIT_PREDIX_WINDDATA_SERVICE_URL" "$GIT_WINDDATA_SERVICE_FILENAME"; then
       cd "$GIT_WINDDATA_SERVICE_FILENAME"
       __append_new_line_log "Successfully cloned \"$GIT_WINDDATA_SERVICE_FILENAME\" and checkout the branch \"$GIT_PREDIX_WINDDATA_SERVICE_VERSION\"" "$buildBasicAppLogDir"
     else
       __error_exit "There was an error cloning the repo \"$GIT_WINDDATA_SERVICE_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
     fi
+  else
+    __append_new_line_log "Preserving existing directory \"$GIT_WINDDATA_SERVICE_FILENAME\"..." "$buildBasicAppLogDir"
   fi
+fi
 
   #Checkout the tag if provided by user
   #__checkoutTags "$GIT_WINDDATA_SERVICE_FILENAME"
@@ -189,28 +192,30 @@ fi
 
 
 # Checkout the nodejs-starter
-if [ -d "$GIT_FRONT_END_FILENAME" ]
-then
-  __append_new_line_log "Deleting existing directory \"$GIT_FRONT_END_FILENAME\"..." "$buildBasicAppLogDir"
-  if rm -rf "$GIT_FRONT_END_FILENAME"; then
-    __append_new_line_log "Successfully deleted!" "$buildBasicAppLogDir"
-  else
-    __error_exit "There was an error deleting the directory: \"$GIT_FRONT_END_FILENAME\"" "$buildBasicAppLogDir"
+if [ -d "$GIT_FRONT_END_FILENAME" ]; then
+  if [[ $DO_GIT_CLONE -eq 1 ]]; then
+    __append_new_line_log "Deleting existing directory \"$GIT_FRONT_END_FILENAME\"..." "$buildBasicAppLogDir"
+    if rm -rf "$GIT_FRONT_END_FILENAME"; then
+      __append_new_line_log "Successfully deleted!" "$buildBasicAppLogDir"
+    else
+      __error_exit "There was an error deleting the directory: \"$GIT_FRONT_END_FILENAME\"" "$buildBasicAppLogDir"
+    fi
   fi
-fi
+  
+  getRepoURL "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_URL
+  getRepoVersion "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_VERSION
+  if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
+    GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
+  fi
 
-getRepoURL "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_URL
-getRepoVersion "predix-nodejs-starter" GIT_PREDIX_NODEJS_STARTER_VERSION
-if [ ! -n "$GIT_PREDIX_NODEJS_STARTER_VERSION" ]; then
-  GIT_PREDIX_NODEJS_STARTER_VERSION="$BRANCH"
-fi
-
-if [[ $DO_GIT_CLONE -eq 1 ]]; then
   if git clone -b "$GIT_PREDIX_NODEJS_STARTER_VERSION" "$GIT_PREDIX_NODEJS_STARTER_URL" "$GIT_FRONT_END_FILENAME"; then
     cd "$GIT_FRONT_END_FILENAME"
     __append_new_line_log "Successfully cloned \"$GIT_FRONT_END_FILENAME\" and checkout the branch \"$GIT_PREDIX_NODEJS_STARTER_VERSION\"" "$buildBasicAppLogDir"
   else
     __error_exit "There was an error cloning the repo \"$GIT_FRONT_END_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+  fi
+  else
+    __append_new_line_log "Preserving existing directory \"$GIT_FRONT_END_FILENAME\"..." "$buildBasicAppLogDir"
   fi
 fi
 
