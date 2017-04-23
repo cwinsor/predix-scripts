@@ -84,7 +84,7 @@ while :; do
          -mp|--mvn-package)
           RUN_MVN_PACKAGE=1
           ;;
-         -ngc|--no-git-clone)
+         -dgc|--do-git-clone)
           DO_GIT_CLONE=0
           ;;
         -mc|--machine-config)
