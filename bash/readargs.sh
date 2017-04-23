@@ -26,7 +26,7 @@ CUSTOM_UAA_INSTANCE=""
 RUN_DELETE_SERVICES=0
 RUN_CREATE_SERVICES=0
 RUN_MVN_PACKAGE=0
-DO_GIT_CLONE=1
+DO_GIT_CLONE=0
 RUN_MACHINE_CONFIG=0
 RUN_COMPILE_REPO=0
 RUN_MACHINE_TRANSFER=0
@@ -85,7 +85,7 @@ while :; do
           RUN_MVN_PACKAGE=1
           ;;
          -dgc|--do-git-clone)
-          DO_GIT_CLONE=0
+          DO_GIT_CLONE=1
           ;;
         -mc|--machine-config)
           RUN_MACHINE_CONFIG=1
