@@ -23,6 +23,9 @@ BUILD_APP_TEXTFILE="$buildBasicAppLogDir/build-basic-app-summary.txt"
 
 GIT_WINDDATA_SERVICE_FILENAME="$buildBasicAppRootDir/../winddata-timeseries-service"
 
+GIT_PREDIX_SEED_FILENAME="$buildBasicAppRootDir/../predix-seed"
+
+
 if ! [ -d "$buildBasicAppLogDir" ]; then
   mkdir "$buildBasicAppLogDir"
   chmod 744 "$buildBasicAppLogDir"
@@ -189,7 +192,7 @@ if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   cd ..
 fi
 
-
+##################################################
 # Checkout the nodejs-starter
 if [[ $DO_GIT_CLONE -eq 1 ]]; then
   if [ -d "$GIT_FRONT_END_FILENAME" ]; then
@@ -281,6 +284,99 @@ else
   fi
 fi
 
+
+##################################################
+# Checkout the predix-seed application
+
+if [[ $DO_GIT_CLONE -eq 1 ]]; then
+  if [ -d "$GIT_PREDIX_SEED_FILENAME" ]; then
+    __append_new_line_log "Deleting existing directory \"$GIT_PREDIX_SEED_FILENAME\"..." "$buildBasicAppLogDir"
+    if rm -rf "$GIT_PREDIX_SEED_FILENAME"; then
+      __append_new_line_log "Successfully deleted!" "$buildBasicAppLogDir"
+    else
+      __error_exit "There was an error deleting the directory: \"$GIT_PREDIX_SEED_FILENAME\"" "$buildBasicAppLogDir"
+    fi
+  fi
+  getRepoURL "predix-seed" GIT_PREDIX_SEED_URL
+  getRepoVersion "predix-seed" GIT_PREDIX_SEED_VERSION
+  if [ ! -n "$GIT_PREDIX_SEED_VERSION" ]; then
+    GIT_PREDIX_SEED_VERSION="$BRANCH"
+  fi
+  
+  if git clone -b "$GIT_PREDIX_SEED_VERSION" "$GIT_PREDIX_SEED_URL" "$GIT_PREDIX_SEED_FILENAME"; then
+    __append_new_line_log "Successfully cloned \"$GIT_PREDIX_SEED_FILENAME\" and checkout the branch \"$GIT_PREDIX_SEED_VERSION\"" "$buildBasicAppLogDir"
+  else
+    __error_exit "There was an error cloning the repo \"$GIT_PREDIX_SEED_FILENAME\". Be sure to have permissions to the repo, or SSH keys created for your account" "$buildBasicAppLogDir"
+  fi
+else
+  __append_new_line_log "Preserving existing directory \"$GIT_PREDIX_SEED_FILENAME\"..." "$buildBasicAppLogDir"
+fi
+cd "$GIT_PREDIX_SEED_FILENAME"
+
+# Edit the manifest.yml files
+
+#    Modify the name of the applications
+__find_and_replace "- name: .*" "- name: $PREDIX_SEED_APP_NAME" "manifest.yml" "$buildBasicAppLogDir"
+
+#    Add the services to bind to the application
+__find_and_replace "\#services:" "services:" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_append_new_line "services:" "- $UAA_INSTANCE_NAME" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_append_new_line "services:" "- $TIMESERIES_INSTANCE_NAME" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_append_new_line "services:" "- $ASSET_INSTANCE_NAME" "manifest.yml" "$buildBasicAppLogDir"
+
+#    Set the clientid and base64ClientCredentials
+__find_and_replace "\#clientId: .*" "clientId: $UAA_CLIENTID_GENERIC" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_replace "\#base64ClientCredential: .*" "base64ClientCredential: $MYGENERICS_SECRET" "manifest.yml" "$buildBasicAppLogDir"
+
+#    Set the timeseries and asset information to query the services
+__find_and_replace "\#assetMachine: .*" "assetMachine: $ASSET_TYPE" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_replace "\#tagname: .*" "tagname: $ASSET_TAG_NOSPACE" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_replace "\#windServiceURL: .*" "windServiceURL: https://$WINDDATA_SERVICE_URL" "manifest.yml" "$buildBasicAppLogDir"
+
+# Edit the applications server/localConfig.json file
+__find_and_replace ".*uaaURL\":.*" "    \"uaaURL\": \"$uaaURL\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*timeseries_zone\":.*" "    \"timeseries_zone\": \"$TIMESERIES_ZONE_ID\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*assetZoneId\":.*" "    \"assetZoneId\": \"$ASSET_ZONE_ID\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*tagname\":.*" "    \"tagname\": \"$ASSET_TAG_NOSPACE\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*clientId\":.*" "    \"clientId\": \"$UAA_CLIENTID_GENERIC\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*base64ClientCredential\":.*" "    \"base64ClientCredential\": \"$MYGENERICS_SECRET\"," "server/localConfig.json" "$buildBasicAppLogDir"
+# Add the required Timeseries and Asset URIs
+__find_and_replace ".*assetURL\":.*" "    \"assetURL\": \"$assetURI/$ASSET_TYPE\"," "server/localConfig.json" "$buildBasicAppLogDir"
+__find_and_replace ".*timeseriesURL\":.*" "    \"timeseriesURL\": \"$TIMESERIES_QUERY_URI\"," "server/localConfig.json" "$buildBasicAppLogDir"
+###if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
+###  __find_and_replace ".*windServiceURL\": .*" "    \"windServiceURL\": \"https://$WINDDATA_SERVICE_URL\"" "server/localConfig.json" "$buildBasicAppLogDir"
+###fi
+
+# Edit the secure/secure.html file
+##cd secure
+##__find_and_replace "<\!--" "" "secure.html" "$buildBasicAppLogDir"
+##__find_and_replace "-->" "" "secure.html" "$buildBasicAppLogDir"
+##cd ..
+
+# Push the application
+#if [[ $USE_TRAINING_UAA -eq 1 ]]; then
+#  sed -i -e 's/uaa_service_label : predix-uaa/uaa_service_label : predix-uaa-training/' manifest.yml
+#fi
+
+npm install
+bower install
+gulp dist
+
+__append_new_head_log "Deploying the application \"$PREDIX_SEED_APP_NAME\"" "-" "$buildBasicAppLogDir"
+if cf push; then
+  __append_new_line_log "Successfully deployed!" "$buildBasicAppLogDir"
+else
+  __append_new_line_log "Failed to deploy application. Retrying..." "$buildBasicAppLogDir"
+  if cf push; then
+    __append_new_line_log "Successfully deployed!" "$buildBasicAppLogDir"
+  else
+    __error_exit "There was an error pushing using: \"cf push\"" "$buildBasicAppLogDir"
+  fi
+fi
+
+
+
+############################################
 # Automagically open the application in browser, based on OS
 apphost=$(cf app $FRONT_END_APP_NAME | grep urls: | awk '{print $2;}')
 case "$(uname -s)" in

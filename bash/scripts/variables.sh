@@ -15,6 +15,7 @@ ALL_PROXY=":8080"
 # Name for your Frone End Application
 FRONT_END_APP_NAME="$INSTANCE_PREPENDER-nodejs-starter"
 WINDDATA_SERVICE_APP_NAME="$INSTANCE_PREPENDER-winddata-service"
+PREDIX_SEED_APP_NAME="$INSTANCE_PREPENDER-predix-seed"
 
 ############### UAA Configurations ###############
 
