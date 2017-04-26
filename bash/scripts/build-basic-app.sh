@@ -108,6 +108,7 @@ ASSET_TAG="$(echo -e "${ASSET_TAG}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:
 ASSET_TAG_NOSPACE=${ASSET_TAG// /_}
 MYGENERICS_SECRET=$(echo -ne $UAA_CLIENTID_GENERIC:$UAA_CLIENTID_GENERIC_SECRET | base64)
 
+##################################################
 cd "$buildBasicAppRootDir/.."
 if [[ "$USE_WINDDATA_SERVICE" == "1" ]]; then
   if [[ $DO_GIT_CLONE -eq 1 ]]; then
@@ -330,8 +331,8 @@ __find_and_replace "\#base64ClientCredential: .*" "base64ClientCredential: $MYGE
 
 #    Set the timeseries and asset information to query the services
 __find_and_replace "\#assetMachine: .*" "assetMachine: $ASSET_TYPE" "manifest.yml" "$buildBasicAppLogDir"
-__find_and_replace "\#tagname: .*" "tagname: $ASSET_TAG_NOSPACE" "manifest.yml" "$buildBasicAppLogDir"
-__find_and_replace "\#windServiceURL: .*" "windServiceURL: https://$WINDDATA_SERVICE_URL" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_replace "\#tagname: .*" "tagname: Light:CWINSOR-111" "manifest.yml" "$buildBasicAppLogDir"
+__find_and_replace "\#windServiceURL: .*" "windServiceURL: https://time-series-store-predix.run.aws-usw02-pr.ice.predix.io/v1/datapoints" "manifest.yml" "$buildBasicAppLogDir"
 
 # Edit the applications server/localConfig.json file
 __find_and_replace ".*uaaURL\":.*" "    \"uaaURL\": \"$uaaURL\"," "server/localConfig.json" "$buildBasicAppLogDir"
