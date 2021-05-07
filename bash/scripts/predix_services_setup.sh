@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
-predixServicesSetupRootDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-predixServicesLogDir="$predixServicesSetupRootDir/../log"
+rootDir=$quickstartRootDir
+logDir="$rootDir/log"
 
 # Predix Dev Bootstrap Script
 # Authors: GE SDLP 2015
@@ -12,169 +12,463 @@ predixServicesLogDir="$predixServicesSetupRootDir/../log"
 # post sample data to the Asset service
 #
 
-source "$predixServicesSetupRootDir/predix_funcs.sh"
-source "$predixServicesSetupRootDir/variables.sh"
-source "$predixServicesSetupRootDir/error_handling_funcs.sh"
-source "$predixServicesSetupRootDir/files_helper_funcs.sh"
-source "$predixServicesSetupRootDir/curl_helper_funcs.sh"
+source "$rootDir/bash/scripts/predix_funcs.sh"
+source "$rootDir/bash/scripts/variables.sh"
+source "$rootDir/bash/scripts/error_handling_funcs.sh"
+source "$rootDir/bash/scripts/files_helper_funcs.sh"
+source "$rootDir/bash/scripts/curl_helper_funcs.sh"
 
-if ! [ -d "$predixServicesLogDir" ]; then
-	mkdir "$predixServicesLogDir"
-	chmod 744 "$predixServicesLogDir"
+if ! [ -d "$logDir" ]; then
+	mkdir "$logDir"
+	chmod 744 "$logDir"
 fi
-touch "$predixServicesLogDir/quickstartlog.log"
+touch "$logDir/quickstart.log"
 
 # Trap ctrlc and exit if encountered
 trap "trap_ctrlc" 2
-__append_new_head_log "Creating Predix Services" "#" "$predixServicesLogDir"
+#__append_new_head_log "Creating Predix Services" "#" "$logDir"
 
-__validate_num_arguments 1 $# "\"predix-services-setup.sh\" expected in order: Name of Predix Application used to get VCAP configurations" "$predixServicesLogDir"
+function pushAnAppForBinding()
+{
+	__append_new_head_log "Pushing an app to bind to Predix Services..." "-" "$logDir"
 
-# Push a test app to get VCAP information for the Predix Services
-rm -rf $1
-getRepoURL "Predix-HelloWorld-WebApp" helloworld_app_url
-echo "helloworld_app_url : $helloworld_app_url"
-getRepoVersion "Predix-HelloWorld-WebApp" helloworld_version
-if [ ! -n "$GIT_PREDIX_WINDDATA_SERVICE_VERSION" ]; then
-	helloworld_version="$BRANCH"
-fi
-git clone $helloworld_app_url -b $helloworld_version $1
-cd $1
-__append_new_line_log "Pushing \"$1\" to initially create Predix Microservices..." "$predixServicesLogDir"
-if __echo_run cf push $1 --random-route; then
-	__append_new_line_log "App \"$1\" successfully pushed to CloudFoundry!" "$predixServicesLogDir"
-else
-	if __echo_run cf push $1 --random-route; then
-		__append_new_line_log "App \"$1\" successfully pushed to CloudFoundry!" "$predixServicesLogDir"
+	# Push a test app to get VCAP information for the Predix Services
+	getGitRepo "Predix-HelloWorld-WebApp"
+	cd Predix-HelloWorld-WebApp
+
+	if __echo_run px push $1 --random-route; then
+		__append_new_line_log "App \"$1\" successfully pushed to CloudFoundry!" "$logDir"
 	else
-		__error_exit "There was an error pushing the app \"$1\" to CloudFoundry..." "$predixServicesLogDir"
+		if __echo_run px push $1 --random-route; then
+			__append_new_line_log "App \"$1\" successfully pushed to CloudFoundry!" "$logDir"
+		else
+			__error_exit "There was an error pushing the app \"$1\" to CloudFoundry..." "$logDir"
+		fi
 	fi
-fi
+}
 
-# Create instance of Predix UAA Service
-__try_create_service $UAA_SERVICE_NAME $UAA_PLAN $UAA_INSTANCE_NAME "{\"adminClientSecret\":\"$UAA_ADMIN_SECRET\"}" "Predix UAA"
+function createUaa()
+{
+	__append_new_head_log "Create UAA Service Instance" "-" "$logDir"
 
-# Bind Temp App to UAA instance
-__try_bind $1 $UAA_INSTANCE_NAME
-
-# Get the UAA enviorment variables (VCAPS)
-if trustedIssuerID=$(cf env $1 | grep predix-uaa* | grep issuerId*| awk 'BEGIN {FS=":"}{print "https:"$3}' | awk 'BEGIN {FS="\","}{print $1}' ); then
-  if [[ "$trustedIssuerID" == "" ]] ; then
-    __error_exit "The UAA trustedIssuerID was not found for \"$1\"..." "$predixServicesLogDir"
-  fi
-  __append_new_line_log "trustedIssuerID copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting the UAA trustedIssuerID..." "$predixServicesLogDir"
-fi
-
-if uaaURL=$(cf env $1 | grep predix-uaa* | grep uri*| awk 'BEGIN {FS=":"}{print "https:"$3}' | awk 'BEGIN {FS="\","}{print $1}' ); then
-  if [[ "$uaaURL" == "" ]] ; then
-    __error_exit "The UAA URL was not found for \"$1\"..." "$predixServicesLogDir"
-  fi
-  __append_new_line_log "UAA URL copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting the UAA URL..." "$predixServicesLogDir"
-fi
-
-# Create instance of Predix TimeSeries Service
-__try_create_service $TIMESERIES_SERVICE_NAME $TIMESERIES_SERVICE_PLAN $TIMESERIES_INSTANCE_NAME "{\"trustedIssuerIds\":[\"$trustedIssuerID\"]}" "Predix TimeSeries"
-
-# Bind Temp App to TimeSeries Instance
-__try_bind $1 $TIMESERIES_INSTANCE_NAME
-
-# Get the Zone ID and URIs from the environment variables (for use when querying and ingesting data)
-if TIMESERIES_ZONE_HEADER_NAME=$(cf env $TEMP_APP | grep -m 1 zone-http-header-name | sed 's/"zone-http-header-name": "//' | sed 's/",//' | tr -d '[[:space:]]'); then
-	echo "TIMESERIES_ZONE_HEADER_NAME : $TIMESERIES_ZONE_HEADER_NAME"
-	__append_new_line_log "TIMESERIES_ZONE_HEADER_NAME copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting TIMESERIES_ZONE_HEADER_NAME..." "$predixServicesLogDir"
-fi
-
-if TIMESERIES_ZONE_ID=$(cf env $TEMP_APP | grep zone-http-header-value |head -n 1 | awk -F"\"" '{print $4}'); then
-	echo "TIMESERIES_ZONE_ID : $TIMESERIES_ZONE_ID"
-	__append_new_line_log "TIMESERIES_ZONE_ID copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting TIMESERIES_ZONE_ID..." "$predixServicesLogDir"
-fi
-
-if TIMESERIES_INGEST_URI=$(cf env $TEMP_APP | grep -m 100 uri | grep wss: | awk -F"\"" '{print $4}'); then
-	echo "TIMESERIES_INGEST_URI : $TIMESERIES_INGEST_URI"
-	__append_new_line_log "TIMESERIES_INGEST_URI copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting TIMESERIES_INGEST_URI..." "$predixServicesLogDir"
-fi
-
-if TIMESERIES_QUERY_URI=$(cf env $TEMP_APP | grep -m 100 uri | grep datapoints | awk -F"\"" '{print $4}'); then
-	__append_new_line_log "TIMESERIES_QUERY_URI copied from environmental variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting TIMESERIES_QUERY_URI..." "$predixServicesLogDir"
-fi
-
-# Create instance of Predix Asset Service
-__try_create_service $ASSET_SERVICE_NAME $ASSET_SERVICE_PLAN $ASSET_INSTANCE_NAME "{\"trustedIssuerIds\":[\"$trustedIssuerID\"]}" "Predix Asset"
-
-# Bind Temp App to Asset Instance
-__try_bind $1 $ASSET_INSTANCE_NAME
-
-# Get the Zone ID from the environment variables (for use when querying Asset data)
-if ASSET_ZONE_ID=$(cf env $1 | grep -m 1 http-header-value | sed 's/"http-header-value": "//' | sed 's/",//' | tr -d '[[:space:]]'); then
-	if [[ "$ASSET_ZONE_ID" == "" ]] ; then
-		__error_exit "The TimeSeries Zone ID was not found for \"$1\"..." "$predixServicesLogDir"
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+		 __try_delete_service $UAA_INSTANCE_NAME
 	fi
-	__append_new_line_log "ASSET_ZONE_ID copied from environment variables!" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting ASSET_ZONE_ID..." "$predixServicesLogDir"
-fi
 
-# Create client ID for generic use by applications - including timeseries and asset scope
-__append_new_head_log "Registering Client on UAA to access the Predix Services" "-" "$predixServicesLogDir"
-__createUaaClient "$uaaURL" "$TIMESERIES_ZONE_ID" "$ASSET_SERVICE_NAME" "$ASSET_ZONE_ID"
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"adminClientSecret\":\"$UAA_ADMIN_SECRET\"}"
+		__try_create_service_using_cfcli $UAA_SERVICE_NAME $UAA_PLAN $UAA_INSTANCE_NAME $configParameters "Predix UAA"
+	else
+		# Create instance of Predix UAA Service
+		__try_create_uaa $UAA_SERVICE_NAME $UAA_PLAN $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET "Predix UAA"
+	fi
 
-# Create a new user account
-__append_new_head_log "Creating User on UAA to login to the application" "-" "$predixServicesLogDir"
-__addUaaUser "$uaaURL"
+	# Bind Temp App to UAA instance
+	# if [[ $BINDING_APP == 1 ]]; then
+	# 	__try_bind $1 $UAA_INSTANCE_NAME
+	# fi
 
-# Get the Asset URI and generate Asset body from the enviroment variables (for use when querying and posting data)
-if assetURI=$(cf env $TEMP_APP | grep -m 100 uri | grep asset | awk -F"\"" '{print $4}'); then
-	__append_new_line_log "Asset URI copied from environment variables! $assetURI" "$predixServicesLogDir"
-else
-	__error_exit "There was an error getting Asset URI..." "$predixServicesLogDir"
-fi
+	# if uaaURL=$(px env $1 | grep predix-uaa* | grep uri*| awk 'BEGIN {FS=":"}{print "https:"$3}' | awk 'BEGIN {FS="\","}{print $1}' ); then
+	#   if [[ "$uaaURL" == "" ]] ; then
+	#     __error_exit "The UAA URL was not found for \"$1\"..." "$logDir"
+	#   fi
+	#   __append_new_line_log "UAA URL copied from environmental variables!" "$logDir"
+	# else
+	# 	__error_exit "There was an error getting the UAA URL..." "$logDir"
+	# fi
+}
 
-# Clean input for machine type and tag, no spaces allowed
-ASSET_TAG="$(echo -e "${ASSET_TAG}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-ASSET_TAG_NOSPACE=${ASSET_TAG// /_}
+function createTimeseries()
+{
+	__append_new_head_log "Create Time Series Service Instance" "-" "$logDir"
 
-assetPostBody=$(printf "[{\"uri\": \"%s\", \"tag\": \"%s\", \"description\": \"%s\"}]%s" "/$ASSET_TYPE/$ASSET_TAG_NOSPACE" "$ASSET_TAG_NOSPACE" "$ASSET_DESCRIPTION")
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $TIMESERIES_INSTANCE_NAME
+	fi
 
-__append_new_head_log "Creating Asset with tags" "-" "$predixServicesLogDir"
-echo "Asset Post Body : $assetPostBody"
-echo "Asset URL : $assetURI"
-createAsset "$uaaURL" "$assetURI" "$ASSET_ZONE_ID" "$assetPostBody"
+	if [[ "$TRUSTED_ISSUER_ID" == "" ]]; then
+    getTrustedIssuerIdFromInstance $UAA_INSTANCE_NAME
+  fi
 
-cd "$predixServicesSetupRootDir"
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		__try_create_service_using_cfcli $TIMESERIES_SERVICE_NAME $TIMESERIES_SERVICE_PLAN $TIMESERIES_INSTANCE_NAME $configParameters "Predix Timeseries"
+	else
+		# Create instance of Predix TimeSeries Service
+		__try_create_predix_service $TIMESERIES_SERVICE_NAME $TIMESERIES_SERVICE_PLAN $TIMESERIES_INSTANCE_NAME $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET $UAA_CLIENTID_GENERIC $UAA_CLIENTID_GENERIC_SECRET "Predix_TimeSeries"
+	fi
 
-__append_new_line_log "Predix Services Configurations found in file: \"$SUMMARY_TEXTFILE\"" "$predixServicesLogDir"
+	# Bind Temp App to TimeSeries Instance
+	# __try_bind $1 $TIMESERIES_INSTANCE_NAME
+}
 
-echo ""  >> $SUMMARY_TEXTFILE
-echo "Predix Services Configuration"  >> $SUMMARY_TEXTFILE
-echo "--------------------------------------------------"  >> $SUMMARY_TEXTFILE
-echo ""  >> $SUMMARY_TEXTFILE
-echo "Installed UAA with a client_id/secret (for your app) and a user/password (for your users to log in to your app)" >> $SUMMARY_TEXTFILE
-echo "Installed Time Series and added time series scopes as client_id authorities" >> $SUMMARY_TEXTFILE
-echo "Installed Asset and added asset scopes as client_id authorities" >> $SUMMARY_TEXTFILE
-echo "" >> $SUMMARY_TEXTFILE
-echo "UAA URL: $uaaURL" >> $SUMMARY_TEXTFILE
-echo "UAA Admin Client ID: admin" >> $SUMMARY_TEXTFILE
-echo "UAA Admin Client Secret: $UAA_ADMIN_SECRET" >> $SUMMARY_TEXTFILE
-echo "UAA Generic Client ID: $UAA_CLIENTID_GENERIC" >> $SUMMARY_TEXTFILE
-echo "UAA Generic Client Secret: $UAA_CLIENTID_GENERIC_SECRET" >> $SUMMARY_TEXTFILE
-echo "UAA User ID: $UAA_USER_NAME" >> $SUMMARY_TEXTFILE
-echo "UAA User PASSWORD: $UAA_USER_PASSWORD" >> $SUMMARY_TEXTFILE
-echo "TimeSeries Ingest URL:  $TIMESERIES_INGEST_URI" >> $SUMMARY_TEXTFILE
-echo "TimeSeries Query URL:  $TIMESERIES_QUERY_URI" >> $SUMMARY_TEXTFILE
-echo "TimeSeries ZoneID: $TIMESERIES_ZONE_ID" >> $SUMMARY_TEXTFILE
-echo "Asset URL:  $assetURI" >> $SUMMARY_TEXTFILE
-echo "Asset Zone ID: $ASSET_ZONE_ID" >> $SUMMARY_TEXTFILE
+function createACSService() {
+	__append_new_head_log "Create Access Control Service Instance" "-" "$logDir"
 
-__append_new_head_log "Created Predix Services!" "-" "$predixServicesLogDir"
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $ACCESS_CONTROL_SERVICE_INSTANCE_NAME
+	fi
+
+	if [[ "$TRUSTED_ISSUER_ID" == "" ]]; then
+		getTrustedIssuerIdFromInstance $UAA_INSTANCE_NAME
+	fi
+
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		__try_create_service_using_cfcli $ACCESS_CONTROL_SERVICE_NAME $ACCESS_CONTROL_SERVICE_PLAN $ACCESS_CONTROL_INSTANCE_NAME $configParameters "Predix Access Control Service"
+	else
+		# Create instance of Predix Access Control Service
+		__try_create_predix_service $ACCESS_CONTROL_SERVICE_NAME $ACCESS_CONTROL_SERVICE_PLAN $ACCESS_CONTROL_SERVICE_INSTANCE_NAME $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET $UAA_CLIENTID_GENERIC $UAA_CLIENTID_GENERIC_SECRET "Predix_Access_Control_Service"
+	fi
+
+	# Bind Temp App to ACS Instance
+	# __try_bind $1 $ACCESS_CONTROL_SERVICE_INSTANCE_NAME
+
+}
+
+function createAssetService() {
+	__append_new_head_log "Create Asset Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $ASSET_INSTANCE_NAME
+	fi
+
+	if [[ "$TRUSTED_ISSUER_ID" == "" ]]; then
+    getTrustedIssuerIdFromInstance $UAA_INSTANCE_NAME
+  fi
+
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		__try_create_service_using_cfcli $ASSET_SERVICE_NAME $ASSET_SERVICE_PLAN $ASSET_INSTANCE_NAME $configParameters "Predix Asset Service"
+	else
+		# Create instance of Predix Asset Service
+		__try_create_predix_service $ASSET_SERVICE_NAME $ASSET_SERVICE_PLAN $ASSET_INSTANCE_NAME $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET $UAA_CLIENTID_GENERIC $UAA_CLIENTID_GENERIC_SECRET "Predix_Asset"
+	fi
+
+	# Bind Temp App to Asset Instance
+	# __try_bind $1 $ASSET_INSTANCE_NAME
+
+	# Get the Zone ID from the environment variables (for use when querying Asset data)
+	if [[ "$ASSET_ZONE_ID" == "" ]]; then
+     getAssetZoneIdFromInstance $ASSET_INSTANCE_NAME
+  fi
+}
+function createBlobstoreService() {
+	__append_new_head_log "Create Blobstore Service Instance" "-" "$logDir"
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $BLOBSTORE_INSTANCE_NAME
+	fi
+	if __service_exists $BLOBSTORE_INSTANCE_NAME ; then
+		echo "Service $BLOBSTORE_INSTANCE_NAME already exists" # Do nothing
+	else
+		px cs $BLOBSTORE_SERVICE_NAME $BLOBSTORE_SERVICE_PLAN $BLOBSTORE_INSTANCE_NAME
+	fi
+	## Deploy the Blobstore sdk
+	cd $rootDir
+	getRepoURL "predix-blobstore-sdk" blobstore_git_url ../version.json
+
+	getRepoVersion "predix-blobstore-sdk" blobstore_version ../version.json
+	echo "git repo version : $blobstore_version"
+	rm -rf blobstore-samples
+	__echo_run git clone $blobstore_git_url -b $blobstore_version
+
+	cd blobstore-samples/blobstore-aws-sample
+	mvn clean install -B -s $MAVEN_SETTINGS_FILE
+	cp manifest.yml manifest_temp.yml
+	__find_and_replace_string "<my-blobstore-instance>" "$BLOBSTORE_INSTANCE_NAME" "manifest_temp.yml" "$logDir" "manifest_temp.yml"
+
+	px push $INSTANCE_PREPENDER-blobstore-sdk-app -f manifest_temp.yml
+	cd $rootDir
+	# Automagically open the application in browser, based on OS
+  if [[ $SKIP_BROWSER == 0 ]]; then
+    getUrlForAppName $INSTANCE_PREPENDER-blobstore-sdk-app apphost "https"
+    case "$(uname -s)" in
+       Darwin)
+         # OSX
+         open $apphost
+         ;;
+
+       CYGWIN*|MINGW32*|MINGW64*|MSYS*)
+         # Windows
+         start "" $apphost
+         ;;
+    esac
+	fi
+}
+function createEventHubService() {
+	__append_new_head_log "Create Event Hub Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $EVENTHUB_INSTANCE_NAME
+	fi
+
+	if [[ "$TRUSTED_ISSUER_ID" == "" ]]; then
+    getTrustedIssuerIdFromInstance $UAA_INSTANCE_NAME
+  fi
+
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		__try_create_service_using_cfcli $EVENTHUB_SERVICE_NAME $EVENTHUB_SERVICE_PLAN $EVENTHUB_INSTANCE_NAME $configParameters "Predix EventHub Service"
+	else
+		# Create instance of Predix Asset Service
+		#__try_create_predix_service $EVENTHUB_SERVICE_NAME $EVENTHUB_SERVICE_PLAN $EVENTHUB_INSTANCE_NAME $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET "$UAA_CLIENTID_GENERIC" $UAA_CLIENTID_GENERIC_SECRET "Event_Hub_Service"
+		#px uaa login $UAA_INSTANCE_NAME admin --secret $UAA_ADMIN_SECRET
+		if __service_exists $EVENTHUB_INSTANCE_NAME ; then
+	    echo "Service $EVENTHUB_INSTANCE_NAME already exists" # Do nothing
+	  else
+			px cs $EVENTHUB_SERVICE_NAME $EVENTHUB_SERVICE_PLAN $EVENTHUB_INSTANCE_NAME $UAA_INSTANCE_NAME --admin-secret $UAA_ADMIN_SECRET --publish-client-id "$UAA_CLIENTID_GENERIC" --publish-client-secret "$UAA_CLIENTID_GENERIC_SECRET" --subscribe-client-id "$UAA_CLIENTID_GENERIC" --subscribe-client-secret "$UAA_CLIENTID_GENERIC_SECRET"
+		fi
+		#configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		#__try_create_service_using_cfcli $EVENTHUB_SERVICE_NAME $EVENTHUB_SERVICE_PLAN $EVENTHUB_INSTANCE_NAME $configParameters "Predix EventHub Service"
+	fi
+
+	# Bind Temp App to Asset Instance
+	__try_bind $1 $EVENTHUB_INSTANCE_NAME
+
+	getEventHubIngestUri $1
+	getEventHubZoneId $1
+
+	#Create Topics if Topics are proviced
+
+	if [[ "$EVENTHUB_TOPICS" != "" ]]; then
+		clientToken=$( __getUaaClientToken $uaaURL $UAA_CLIENTID_LOGIN $UAA_CLIENTID_LOGIN_SECRET)
+		getEventHubAdminURI $1
+		for topic in $(echo $EVENTHUB_TOPICS | tr "," "\n");
+		do
+			echo "curl '$EVENTHUB_ADMIN_URL/v2/admin/service_instances/$EVENTHUB_ZONE_ID/topics/$topic' -X PUT -H \"Authorization: $clientToken\""
+		 	curl "$EVENTHUB_ADMIN_URL/v2/admin/service_instances/$EVENTHUB_ZONE_ID/topics/$topic" -X PUT -H "Authorization: $clientToken"
+			_arrayScope=("predix-event-hub.zones.$EVENTHUB_ZONE_ID.$topic.publish" "predix-event-hub.zones.$EVENTHUB_ZONE_ID.$topic.subscribe" "predix-event-hub.zones.$EVENTHUB_ZONE_ID.$topic.user")
+			__updateUaaClient "$uaaURL" "$UAA_CLIENTID_GENERIC" _arrayScope[@] _arrayScope[@]
+		done
+
+	fi
+}
+
+function createMobileService() {
+	__append_new_head_log "Create Mobile Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $MOBILE_INSTANCE_NAME
+	fi
+
+	__try_create_predix_mobile_service $MOBILE_SERVICE_NAME $MOBILE_SERVICE_PLAN $MOBILE_INSTANCE_NAME $UAA_INSTANCE_NAME $UAA_ADMIN_SECRET  $UAA_USER_NAME $UAA_USER_EMAIL $UAA_USER_PASSWORD $MOBILE_OAUTH_API_CLIENT $MOBILE_OAUTH_API_CLIENT_SECRET "Predix-Mobile"
+
+	px si $MOBILE_INSTANCE_NAME
+	px si $MOBILE_INSTANCE_NAME | grep api_gateway_short_route
+	px si $MOBILE_INSTANCE_NAME | grep api_gateway_short_route | sed 's/.*\(https.*\)",/\1/'
+
+	API_GATEWAY_SHORT_ROUTE=`px si $MOBILE_INSTANCE_NAME | grep api_gateway_short_route | sed 's/.*\(https.*\)",/\1/'`
+	export API_GATEWAY_SHORT_ROUTE
+	__append_new_line_log "API_GATEWAY_SHORT_ROUTE: $API_GATEWAY_SHORT_ROUTE" "$logDir"
+
+	getMobileZoneIdFromInstance $MOBILE_INSTANCE_NAME
+}
+
+function createAnalyticFrameworkServiceInstance() {
+	__append_new_head_log "Create Analytic Framework Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $ANALYTIC_FRAMEWORK_SERVICE_INSTANCE_NAME
+	fi
+
+	if [[ "$TRUSTED_ISSUER_ID" == "" ]]; then
+	  getTrustedIssuerIdFromInstance $UAA_INSTANCE_NAME
+	fi
+
+	if [[ $USE_TRAINING_UAA == 1 ]]; then
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		__try_create_service_using_cfcli $ANALYTIC_FRAMEWORK_SERVICE_NAME $ANALYTIC_FRAMEWORK_SERVICE_PLAN $ANALYTIC_FRAMEWORK_SERVICE_INSTANCE_NAME $configParameters "Analytic Framework Service"
+	else
+		configParameters="{\"trustedIssuerIds\":[\"$TRUSTED_ISSUER_ID\"]}"
+		# Create instance of Predix Analytic Framework Service
+		__try_create_af_service $ANALYTIC_FRAMEWORK_SERVICE_NAME $ANALYTIC_FRAMEWORK_SERVICE_PLAN $ANALYTIC_FRAMEWORK_SERVICE_INSTANCE_NAME $UAA_INSTANCE_NAME $ASSET_INSTANCE_NAME $TIMESERIES_INSTANCE_NAME $UAA_ADMIN_SECRET $UAA_CLIENTID_GENERIC $UAA_CLIENTID_GENERIC_SECRET $UAA_CLIENTID_LOGIN $UAA_CLIENTID_LOGIN_SECRET $ANALYTIC_UI_USER_NAME $ANALYTIC_UI_PASSWORD $ANALYTIC_UI_USER_EMAIL $INSTANCE_PREPENDER "Predix AF Service"
+		#__try_create_service_using_cfcli $ANALYTIC_FRAMEWORK_SERVICE_NAME $ANALYTIC_FRAMEWORK_SERVICE_PLAN $ANALYTIC_FRAMEWORK_SERVICE_INSTANCE_NAME $configParameters "Analytic Framework Service"
+	fi
+
+	# Bind Temp App to Analytic framework Instance
+	# __try_bind $1 $ANALYTIC_FRAMEWORK_SERVICE_INSTANCE_NAME
+}
+
+function createRabbitMQInstance() {
+	__append_new_head_log "Create Predix MQ Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $RABBITMQ_SERVICE_INSTANCE_NAME
+	fi
+
+	if __service_exists $RABBITMQ_SERVICE_INSTANCE_NAME ; then
+		echo "Service $RABBITMQ_SERVICE_INSTANCE_NAME already exists" # Do nothing
+	else
+		px cs $RABBITMQ_SERVICE_NAME $RABBITMQ_SERVICE_PLAN $RABBITMQ_SERVICE_INSTANCE_NAME
+	fi
+}
+
+function bindRabbitMQInstance() {
+	__append_new_head_log "Bind RabbitMQ Service Instance" "-" "$logDir"
+  # Bind Given App to RabbitMQ Service Instance
+	__try_bind $1 $RABBITMQ_SERVICE_INSTANCE_NAME
+}
+
+function setEnv() {
+	__append_new_head_log "Setting Env vars" "-" "$logDir"
+
+	__try_setenv $1 $2 $3
+}
+
+function restageApp() {
+	__append_new_head_log "Restage" "-" "$logDir"
+
+	__try_restage $1
+}
+
+function createDeviceService() {
+  __append_new_head_log "Create Client for Devices" "-" "$logDir"
+	if [[ "$UAA_URL" == "" ]]; then
+		getUaaUrlFromInstance $UAA_INSTANCE_NAME
+	fi
+	__createDeviceClient "$UAA_URL" "$UAA_CLIENTID_DEVICE" "$UAA_CLIENTID_DEVICE_SECRET"
+	__addTimeseriesAuthorities $UAA_CLIENTID_DEVICE
+}
+
+# one arg: service name
+function createPredixCacheInstance() {
+    __append_new_head_log "Create Predix Cache Service Instance" "-" "$logDir"
+
+	if [[ $RUN_DELETE_SERVICES -eq 1 ]]; then
+	   __try_delete_service $PREDIX_CACHE_INSTANCE_NAME
+	fi
+
+	# Create instance of RabbitMQ Service
+	__try_create_service_using_cfcli $PREDIX_CACHE_SERVICE_NAME $PREDIX_CACHE_SERVICE_PLAN $PREDIX_CACHE_INSTANCE_NAME "{}" "Predix Cache Service"
+}
+
+#main sript starts here
+function __setupServices() {
+	__validate_num_arguments 1 $# "\"predix-services-setup.sh\" expected in order: Name of Predix Application used to get VCAP configurations" "$logDir"
+
+	if [[ ( $BINDING_APP == 1 ) ]]; then
+		pushAnAppForBinding $1
+	fi
+
+	if [[ ($RUN_CREATE_UAA == 1) ]]; then
+		if [[ "$UAA_ZONE_ID" == "" ]]; then
+			createUaa $1
+			# Create client ID for generic use by applications - including timeseries and asset scope
+			__append_new_head_log "Registering Client on UAA to access the Predix Services" "-" "$logDir"
+			if [[ "$UAA_URL" == "" ]]; then
+				getUaaUrlFromInstance $UAA_INSTANCE_NAME
+			fi
+
+			__createUaaLoginClient "$UAA_URL" "$UAA_CLIENTID_LOGIN" "$UAA_CLIENTID_LOGIN_SECRET"
+			if [[ $USE_TRAINING_UAA == 1 ]]; then
+				__createUaaAppClient "$UAA_URL" "$UAA_CLIENTID_GENERIC" "$UAA_CLIENTID_GENERIC_SECRET"
+			fi
+			# Create a new user account
+			if [[ $RUN_CREATE_MOBILE != 1 ]]; then
+				# moble service creates user itself
+				__addUaaUser "$UAA_URL"
+			fi
+		else
+			UAA_URL="https://$UAA_ZONE_ID.predix-uaa.run.aws-usw02-pr.ice.predix.io/oauth/token"
+			uaaURL="$UAA_URL"
+			UAA_CLIENTID_LOGIN="$UAA_CLIENT_ID"
+			UAA_CLIENTID_LOGIN_SECRET="$UAA_CLIENT_SECRET"
+		fi
+	fi
+	if [[ ( $RUN_CREATE_ASSET == 1 ) ]]; then
+		createAssetService $1
+		if [[ $USE_TRAINING_UAA == 1 ]]; then
+			__addAssetAuthorities $UAA_CLIENTID_GENERIC
+		fi
+	fi
+
+	if [[ ( $RUN_CREATE_MOBILE == 1 ) ]]; then
+		createMobileService $1
+	fi
+	if [[ "$TIMESERIES_ZONE_ID" == "" ]]; then
+		if [[ ( "$RUN_CREATE_TIMESERIES" == "1" || "$USE_WINDDATA_SERVICE" == "1" ) ]]; then
+			createTimeseries $1
+			if [[ $USE_TRAINING_UAA == 1 ]]; then
+				__addTimeseriesAuthorities $UAA_CLIENTID_GENERIC
+			fi
+		fi
+	fi
+
+	if [[ ( $RUN_CREATE_EVENT_HUB == 1 ) ]]; then
+		createEventHubService $1
+		if [[ $USE_TRAINING_UAA == 1 ]]; then
+			__addEventHubAuthorities $UAA_CLIENTID_GENERIC
+		fi
+	fi
+	if [[ ( $RUN_CREATE_BLOBSTORE == 1 ) ]]; then
+		createBlobstoreService $1
+	fi
+	if [[ ( $RUN_CREATE_ACS == 1 ) ]]; then
+		createACSService $1
+		if [[ $USE_TRAINING_UAA == 1 ]]; then
+			__addAcsAuthorities $UAA_CLIENTID_GENERIC
+		fi
+	fi
+
+	if [[ ( $RUN_CREATE_ANALYTIC_FRAMEWORK == 1 ) ]]; then
+		createAnalyticFrameworkServiceInstance $1
+		__addAnalyticFrameworkAuthorities $UAA_CLIENTID_GENERIC
+	fi
+
+	if [[ ( $RUN_CREATE_PREDIX_CACHE == 1 ) ]]; then
+		createPredixCacheInstance $1
+	fi
+
+	#get some variables for printing purposes below
+	if [[ ( "$RUN_CREATE_TIMESERIES" == "1" || "$USE_WINDDATA_SERVICE" == "1" ) ]]; then
+		if [[ "$TIMESERIES_INGEST_URI" == "" ]]; then
+			getTimeseriesIngestUriFromInstance $TIMESERIES_INSTANCE_NAME
+		fi
+		if [[ "$TIMESERIES_QUERY_URI" == "" ]]; then
+			getTimeseriesQueryUriFromInstance $TIMESERIES_INSTANCE_NAME
+		fi
+		if [[ "$TIMESERIES_ZONE_ID" == "" ]]; then
+			getTimeseriesZoneIdFromInstance $TIMESERIES_INSTANCE_NAME
+		fi
+	fi
+	cd "$rootDir"
+
+	__append_new_line_log "Predix Services Configurations found in file: \"$SUMMARY_TEXTFILE\"" "$logDir"
+
+	echo ""  >> $SUMMARY_TEXTFILE
+	echo "Predix Services Configuration"  >> $SUMMARY_TEXTFILE
+	echo "--------------------------------------------------"  >> $SUMMARY_TEXTFILE
+	if [[ $RUN_CREATE_UAA == 1 ]]; then
+		echo "Installed UAA with a client_id/secret (for your app) and a user/password (for your users to log in to your app)" >> $SUMMARY_TEXTFILE
+    echo "UAA URL: $UAA_URL" >> $SUMMARY_TEXTFILE
+	  echo "UAA Admin Client ID: admin" >> $SUMMARY_TEXTFILE
+	  echo "UAA Admin Client Secret: $UAA_ADMIN_SECRET" >> $SUMMARY_TEXTFILE
+	  echo "UAA Generic Client ID: $UAA_CLIENTID_GENERIC" >> $SUMMARY_TEXTFILE
+	  echo "UAA Generic Client Secret: $UAA_CLIENTID_GENERIC_SECRET" >> $SUMMARY_TEXTFILE
+	  echo "UAA User ID: $UAA_USER_NAME" >> $SUMMARY_TEXTFILE
+	  echo "UAA User PASSWORD: $UAA_USER_PASSWORD" >> $SUMMARY_TEXTFILE
+  fi
+	if [[ "$RUN_CREATE_TIMESERIES" == "1" ]]; then
+		echo "" >> $SUMMARY_TEXTFILE
+		echo "Installed Time Series and added time series scopes as client_id authorities" >> $SUMMARY_TEXTFILE
+		echo "TimeSeries Query URL:  $TIMESERIES_QUERY_URI" >> $SUMMARY_TEXTFILE
+		echo "TimeSeries ZoneID: $TIMESERIES_ZONE_ID" >> $SUMMARY_TEXTFILE
+	fi
+	if [[ $RUN_CREATE_ASSET == 1 ]]; then
+		echo "" >> $SUMMARY_TEXTFILE
+		echo "Installed Asset and added asset scopes as client_id authorities" >> $SUMMARY_TEXTFILE
+    echo "Asset URL:  $assetURI" >> $SUMMARY_TEXTFILE
+	  echo "Asset Zone ID: $ASSET_ZONE_ID" >> $SUMMARY_TEXTFILE
+	fi
+	if [[ $RUN_CREATE_MOBILE == 1 ]]; then
+		echo "" >> $SUMMARY_TEXTFILE
+		echo "Mobile Api Gateway Short Route Url: $API_GATEWAY_SHORT_ROUTE" >> $SUMMARY_TEXTFILE
+    echo "Mobile Zone ID: $MOBILE_ZONE_ID" >> $SUMMARY_TEXTFILE
+  fi
+	if [[ ( $RUN_CREATE_BLOBSTORE == 1 ) ]]; then
+		echo "" >> $SUMMARY_TEXTFILE
+		echo "Blobstore SDK Application has been installed. You can submit and query blobstore using the SDK urls below"
+		echo " to Post a file : curl -i -X POST -H \"Content-Type: multipart/form-data\" -F \"file=@<File name with absolute path>\" $apphost/v1/blob"
+		echo " to Retrieve the files curl -i -X GET $apphost/v1/blob"
+	fi
+}
